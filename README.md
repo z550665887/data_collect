@@ -5,6 +5,7 @@
 将信息采集的底层命令实现封装成包 Hard_collect.py
 
 #######################################################操作方法如下所示
+
 #>>> import Hard_collect
 
 #>>> print Hard_collect.MEMORY().memory()
