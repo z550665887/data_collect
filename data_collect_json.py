@@ -10,7 +10,7 @@ import urllib
 import urllib2
 import json
 
-Text = {'Ip':'','information':[]}
+Text = {'information':[]}
 
 
 def getverson():
@@ -78,5 +78,4 @@ def main():
     url_request(Text)
 
 if __name__ == '__main__':    
-    Text['Ip'] = getip()
     main()

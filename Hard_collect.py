@@ -93,7 +93,7 @@ class NETWORK():            ##网卡信息采集，包括网卡名称，IP和网
             else:
                 net_ip.append("")
             mac = os.popen("/sbin/ifconfig -a %s|egrep  'HWaddr|ether'"%x).read()[:-1]
-            mac = re.search(r'(\w{1,2})\:(\w{1,2})\:(\w{1,2})\:(\w{1,2})',mac)
+            mac = re.search(r'(\w{1,2})\:(\w{1,2})\:(\w{1,2})\:(\w{1,2})\:(\w{1,2})\:(\w{1,2})',mac)
             if mac:
                 net_mac.append(mac.group())
             else:
@@ -126,7 +126,11 @@ class CPU():            ##CPU信息采集，包括CPU的名称，CPU的总核数
                 elif 'clflush size' in line:
                     cpu_message['Cpu_Size'] = line.split(':')[1].strip()
         cpu_message['Cpu_Name'] = str(cpu_message['Cpu_Processor'])+'*'+cpu_message['Cpu_Name']
-        cpu_message['Cpu_Rart'] = str(cpu_message['Cpu_Processor'])+'*'+cpu_message['Cpu_Name'].split('@')[1].strip()
+        if os.popen('cat /proc/cpuinfo|grep -c "GHz" ').read():
+            cpu_message['Cpu_Rart'] = str(cpu_message['Cpu_Processor'])+'*'+cpu_message['Cpu_Name'].split('@')[1].strip()
+        # else:
+        #     rart = int(os.popen("cat /proc/cpuinfo |grep -i 'MHz'|awk -F: '{print $2}'").readlines()[0].strip())
+        #     cpu_message['Cpu_Rart'] = str(cpu_message['Cpu_Processor'])+'*'+str(rart/1000+1)+"GHz"
         self.Cpu = cpu_message
         return self.Cpu
 

@@ -69,7 +69,6 @@ def getcpu():
 def getcontrolIP():
     print '管理卡IP检测-start-'
     ip_message = Hard_collect.IP().ip()
-    controlIp = os.popen("ipmitool lan print|grep -i 'IP Address'|grep -v 'Source'|awk -F ':' '{print $2}' ").read().strip()    ###管理卡IP
     for x in ip_message['Outer_Ip']:
         if x :
             print '外网IP:'+x
