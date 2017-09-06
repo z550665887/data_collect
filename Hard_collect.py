@@ -39,9 +39,14 @@ class MEMORY():                 ##内存相关信息，包括SN,型号，大小
         if not check_virutal():
             self.Memory['Memory_Size'] = os.popen("free -b|awk '/Mem:/{print $2/1024\'kB\'}'").read()
             return self.Memory
-        self.Memory['Memory_Sn'] = [x[:-1] for x in os.popen("/usr/sbin/dmidecode |grep -A16 'Memory Device$' |grep -i 'serial'|awk '{print $3}'").readlines() if re.search(r'^(\w{8})$',x)]
-        self.Memory['Memory_Size'] = [x[:-1] for x in os.popen("/usr/sbin/dmidecode  |grep -A16 'Memory Device$' |grep -i 'size'|awk '{print $2$3}'").readlines() if re.search(r'MB',x,re.IGNORECASE)]
-        self.Memory['Memory_Type'] = [x[:-1] for x in os.popen("/usr/sbin/dmidecode  |grep -A16 'Memory Device$' |grep -i 'Type:'|awk -F ':' '{print $2}'").readlines() if not re.search(r'Unknown',x)]
+        Sn = os.popen("/usr/sbin/dmidecode |grep -A16 'Memory Device$' |grep -i 'serial'|awk '{print $3}'").readlines()
+        Size = os.popen("/usr/sbin/dmidecode  |grep -A16 'Memory Device$' |grep -i 'size'|awk '{print $2$3}'").readlines()
+        Type = os.popen("/usr/sbin/dmidecode  |grep -A16 'Memory Device$' |grep -i 'Type:'|awk -F ':' '{print $2}'").readlines()
+        for x in range(len(Size)):
+            if re.search(r'MB',Size[x],re.IGNORECASE):
+                self.Memory['Memory_Sn'].append(Sn[x][:-1])
+                self.Memory['Memory_Size'].append(Size[x][:-1])
+                self.Memory['Memory_Type'].append(Type[x][:-1])
         return self.Memory
 
     def memory_sn(self):
@@ -59,8 +64,8 @@ class SYSTEM():             ##系统相关信息 包括主机名，系统名，�
         self.System['Sys_Name'] = platform.linux_distribution()[0]
         self.System['Sys_verson'] = platform.linux_distribution()[1]
         self.System['Sys_code'] = platform.linux_distribution()[2]
-        self.System['release'] = platform.machine()
-        self.System['machine'] = platform.release()
+        self.System['release'] = platform.release()
+        self.System['machine'] = platform.machine()
         return self.System
 
     def system_node(self):
@@ -191,10 +196,11 @@ class IP():             ##IP信息采集，包括内网IP，外网IP，管理卡
     Ip = {'Outer_Ip':[],'Intranet_Ip':[],'Management_Ip':[]}
 
     def ip(self):
-        ip_message = {'Outer_Ip':[],'Intranet_Ip':[],'Management_Ip':[]}
+        ip_message = {'Outer_Ip':[],'Intranet_Ip':[],'Management_Ip':''}
         iptools = NETWORK().network_ip()
         if check_virutal():
-            ip_message['Management_Ip'] = os.popen("ipmitool lan print|grep -i 'IP Address'|grep -v 'Source'|awk -F ':' '{print $2}' ").read().strip()
+            management_IP= os.popen("timeout 5 ipmitool lan print|grep -i 'IP Address'|grep -v 'Source'|awk -F ':' '{print $2}' ").read().strip()
+            ip_message['Management_Ip']=management_IP if management_IP  else "no connect ipmitool"
         for i in iptools:
             if re.match(r'^10.',i) or re.match(r'^192.',i) or re.match(r'^172.',i):
                 ip_message['Intranet_Ip'].append(i)
@@ -206,6 +212,6 @@ class IP():             ##IP信息采集，包括内网IP，外网IP，管理卡
     def outer_ip(self):
         return self.ip()['Outer_Ip']
     def intranet_ip(self):
-        return self.ip()['intranet_ip']
+        return self.ip()['Intranet_Ip']
     def management_ip(self):
-        return self.ip()['management']
+        return self.ip()['Management_Ip']

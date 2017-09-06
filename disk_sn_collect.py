@@ -4,17 +4,17 @@ import re
 import time
 from collections import deque
 
-NAME =deque()
-SN = deque()
-Type = deque()
-PDtype = deque()
-Size = deque()
-MediaType = deque()
-Life = deque()
+NAME =[]
+SN = []
+Type = []
+PDtype = []
+Size = []
+MediaType = []
+Life = []
 VM_Size = 0
-Raid_Name = deque()
-Raid_Size = deque()
-Raid_Level = deque()
+Raid_Name = []
+Raid_Size = []
+Raid_Level = []
 
 def getRaid():
     name = os.popen("/opt/MegaRAID/MegaCli/MegaCli -AdpAllInfo -aALL|grep -i 'Product Name'|awk -F ':' '{print $2}'").readlines()
@@ -23,8 +23,8 @@ def getRaid():
     for x in range(len(name)):
         Raid_Name.append(name[x][:-1])
         Raid_Size.append(size[x][:-1])
-        Raid_Level.append(getRaidLevel(level[x][:-1]))
-        # Raid_Level.append(level[x][:-1])
+        # Raid_Level.append(getRaidLevel(level[x][:-1]))    ###对raid等级进行预定义 等待敲定
+        Raid_Level.append(level[x][:-1])
 
 def getRaidLevel(level):
     if 'Primary-1' in level and 'Secondary-3' in level and 'Qualifier-0' in level:
@@ -41,15 +41,14 @@ def getRaidLevel(level):
 
 def getMediaType():
     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli -pdlist -aall|grep -i 'Media Type'|awk -F ':' '{print $2}'").readlines()
-    # if not data:
-    #     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli64 -pdlist -aall|grep -i 'Media Type'|awk -F ':' '{print $2}'").readlines()
     for i in data:
         MediaType.append(i.replace('\n','').strip())
 
 def getSN():
     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli -pdlist -aall|grep -i 'Inquiry Data'|awk -F ':' '{print $2}'").readlines()
-    # if not data:
-    #     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli64 -pdlist -aall|grep -i 'Inquiry Data'|awk -F ':' '{print $2}'").readlines()
+    ReSn(data)
+
+def ReSn(data):
     for i in data:
         i=re.sub(r"\s{2,}", " ", i)
         if re.search(r'SEAGATE',i):              ##希捷测试OK 
@@ -59,12 +58,12 @@ def getSN():
             Type.append(i[1])
         elif re.search(r'(\W)(\w{8})ST(\w{4,})',i):     ##希捷测试OK 
             NAME.append(i[:-1])                   ##Inquiry Data:   ZC205QH1ST2000NM0055-1V4104    DA03
-            i=i.split(" ")          
-            SN.append(i[1][:8])
             if re.search(r'LENOVOL',i):             ###是联想品牌 
                 Type.append("LENOVOL")              ##Inquiry Data:   ZC102G7SST4000NM0035 03X4440  LENOVOLJ83 
             else:
                 Type.append("SEAGATE")
+            i=i.split(" ")          
+            SN.append(i[1][:8])
         elif re.search(r' ATA ',i) and re.search(r'ST(\w{10})',i):  ##希捷测试OK
             NAME.append(i[:-1])                          ##Inquiry Data: ATA  ST8000NM0055-1RMPA27 ZA1506NP
             i.split(" ")
@@ -150,23 +149,17 @@ def getSN():
 
 def getPDtype():
     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli -pdlist -aall|grep -i 'pd type'|awk -F':' '{print $2}'").readlines()
-    # if not data:
-    #     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli64 -pdlist -aall|grep -i 'pd type'|awk -F':' '{print $2}'").readlines()
     for i in data:
         PDtype.append(i.replace('\n','').strip())
 
 def getSize():
     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli -pdlist -aall|grep -i 'Coerced Size:'|awk '{print $3$4}'").readlines()
-    # if not data:
-    #     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli64 -pdlist -aall|grep -i 'Coerced Size:'|awk '{print $3$4}'").readlines()
     for i in data:
         if 'Size' not in i:
             Size.append(i.replace('\n','').strip())
 
 def getLife():
     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli -pdlist -aall|grep 'Device Id'|awk -F ':' '{print $2}'").readlines()
-    # if not data:
-    #     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli64 -pdlist -aall|grep 'Device Id'|awk -F ':' '{print $2}'").readlines()
     device_Id = [x[:-1].strip() for x in data]
     for i in device_Id:
         life = os.popen("smartctl -a -d megaraid,%s -i /dev/sda|egrep -i 'number of hours powered up|Power_On_Hours'"%i).read()[-9:-1].strip()
@@ -181,37 +174,67 @@ def getvirutaldate():
     for x in data:
         datas= int(x[:-1].strip().split(".")[0]) + datas
     VM_Size = datas
-    # print "虚拟机硬盘大小:" + str(VM_Size)+data[0].strip().split(" ")[1]
     return str(VM_Size)+data[0].strip().split(" ")[1]
+
+def gethuipu_data():
+    num=os.popen('hpacucli ctrl all show status|grep -i "Smart Array"|cut -d" "  -f6').read()[:-1]
+    for x in num:
+        NAME.append(os.popen("hpacucli ctrl slot=%s pd all show detail|grep -E 'Model|Serial Number'|awk -F: '{print $2}'"%x).read().replace('\n','').strip())
+        Type.append(os.popen("hpacucli ctrl slot=%s pd all show detail|grep -E 'Model'|awk -F: '{print $2}'"%x).read()[:-1].strip())
+        SN.append(os.popen("hpacucli ctrl slot=%s pd all show detail|grep -E 'Serial Number'|awk -F: '{print $2}'"%x).read()[:-1].strip())
+        PDtype.append(os.popen("hpacucli ctrl slot=%s pd all show detail|grep -i 'Interface Type'|awk -F':' '{print $2}'"%x).read()[:-1].strip()) 
+        Size.append(os.popen("hpacucli ctrl slot=%s pd all show detail|grep -i 'Size'|awk -F':' '{print $2}'"%x).read()[:-1].strip())
+        MediaType.append("can't find")
+        raid_name = os.popen("hpacucli ctrl all show |awk -F 'in Slot' '{print $1}'").read().replace('\n','')
+        re_size = os.popen("hpacucli ctrl slot=%s ld all show |grep -oe '(.*)'|sed 's/[()]//g'|awk -F',' '{print $2}'"%x).readlines()
+        re_level = os.popen("hpacucli ctrl slot=%s ld all show |grep -oe '(.*)'|sed 's/[()]//g'|awk -F',' '{print $1}'"%x).readlines()
+        for i in re_size:
+            Raid_Name.append(raid_name.strip())
+            Raid_Size.append(i[:-1].strip())
+        for i in re_level:
+            Raid_Level.append(i[:-1].strip())
+
+
+
 
 def printall():
     time_start=time.time()
     if check_virutal():
-        if os.path.exists("/opt/MegaRAID/MegaCli/MegaCli64"):
-            os.system("cp -rf /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli")
-            os.system("mv /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli64.bak")
-        getMediaType()
-        getSN()
-        getPDtype()
-        getSize()
-        getRaid()
-        # getLife()
-        print NAME,SN,Type,PDtype,Size,MediaType,Life,Raid_Name,Raid_Size,Raid_Level
+        if os.path.exists("/opt/compaq/hpacucli/bld/hpacucli"):
+            gethuipu_data()
+            print NAME,SN,Type,PDtype,Size,MediaType,Life,Raid_Name,Raid_Size,Raid_Level
+        else:
+            if not os.path.exists("/opt/MegaRAID/MegaCli/"):
+                os.system("yum install -y MegaCli")
+            if os.path.exists("/opt/MegaRAID/MegaCli/MegaCli64"):
+                os.system("cp -rf /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli")
+                os.system("mv /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli64.bak")
+            getMediaType()
+            getSN()
+            getPDtype()
+            getSize()
+            getRaid()
+            # getLife()
+            print NAME,SN,Type,PDtype,Size,MediaType,Life,Raid_Name,Raid_Size,Raid_Level
     else:
         print "虚拟机硬盘大小:" + getvirutaldate()
 
 def returnall():
     time_start=time.time()
     if check_virutal():
-        if os.path.exists("/opt/MegaRAID/MegaCli/MegaCli64"):
-            os.system("cp -rf /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli")
-            os.system("mv /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli64.bak")
-        getMediaType()
-        getSN()
-        getPDtype()
-        getSize()
-        getRaid()
-        # getLife()
-        return NAME,SN,Type,PDtype,Size,MediaType,Life,Raid_Name,Raid_Size,Raid_Level
+        if os.path.exists("/opt/compaq/hpacucli/bld/hpacucli"):
+            gethuipu_data()
+            return [NAME,SN,Type,PDtype,Size,MediaType,Life,Raid_Name,Raid_Size,Raid_Level]
+        else:
+            if os.path.exists("/opt/MegaRAID/MegaCli/MegaCli64"):
+                os.system("cp -rf /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli")
+                os.system("mv /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli64.bak")
+            getMediaType()
+            getSN()
+            getPDtype()
+            getSize()
+            getRaid()
+            # getLife()
+            return [NAME,SN,Type,PDtype,Size,MediaType,Life,Raid_Name,Raid_Size,Raid_Level]
     else:
         return getvirutaldate()
