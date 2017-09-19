@@ -124,11 +124,11 @@ def main():
     getcontrolIP()
     getdisk()
     getfilesystem()
-    # print Text
-    Text2['information'] = Text
+    print Text
+    # Text2['information'] = Text
     # print Text2
-    # url_request(Text)
-    url_request2(Text2)
+    url_request(Text)
+    # url_request2(Text2)
 
 if __name__ == '__main__':    
     main()
