@@ -37,16 +37,18 @@ class MEMORY():                 ##内存相关信息，包括SN,型号，大小
 
     def memory(self):
         if not check_virutal():
-            self.Memory['Memory_Size'] = os.popen("free -b|awk '/Mem:/{print $2/1024\'kB\'}'").read()
+            self.Memory['Memory_Size'] = os.popen("free -b|awk '/Mem:/{print $2/1024/1024\"MB\"}'").read()[:-1]
             return self.Memory
+        Memory_mes = {'Memory_Sn':[],'Memory_Size':[],'Memory_Type':[]}
         Sn = os.popen("/usr/sbin/dmidecode |grep -A16 'Memory Device$' |grep -i 'serial'|awk '{print $3}'").readlines()
         Size = os.popen("/usr/sbin/dmidecode  |grep -A16 'Memory Device$' |grep -i 'size'|awk '{print $2$3}'").readlines()
         Type = os.popen("/usr/sbin/dmidecode  |grep -A16 'Memory Device$' |grep -i 'Type:'|awk -F ':' '{print $2}'").readlines()
         for x in range(len(Size)):
             if re.search(r'MB',Size[x],re.IGNORECASE):
-                self.Memory['Memory_Sn'].append(Sn[x][:-1])
-                self.Memory['Memory_Size'].append(Size[x][:-1])
-                self.Memory['Memory_Type'].append(Type[x][:-1])
+                Memory_mes['Memory_Sn'].append(Sn[x][:-1])
+                Memory_mes['Memory_Size'].append(Size[x][:-1])
+                Memory_mes['Memory_Type'].append(Type[x][:-1])
+        self.Memory = Memory_mes
         return self.Memory
 
     def memory_sn(self):
@@ -81,30 +83,63 @@ class SYSTEM():             ##系统相关信息 包括主机名，系统名，�
     def system_machine(self):
         return self.system()['machine']
 
+
 class NETWORK():            ##网卡信息采集，包括网卡名称，IP和网卡的mac地址
     Network = {'Network_Name':[],'Network_Ip':[],'Network_Mac':[]}
-
+    
     def network(self):
-        net_name=[x[:-1] for x in os.popen("/sbin/ifconfig -a|sed -n '/Link encap/p'|awk '{print $1}'|grep -v lo").readlines()]
-        if not net_name:
-            net_name=[x[:-1] for x in os.popen("/sbin/ifconfig -a|sed -n '/flags=/p'|awk -F: '{print $1}'|grep -v lo").readlines()]
+        net_name=[x[:-1] for x in os.popen("/sbin/ip address |awk '/^[0-9]+: (eth|em|bond|ens)/{sub(\":\",\"\",$2);print $2;}'").readlines()]
         net_ip=[]
         net_mac=[]
+        ext_name=[]
+        ext_ip=[]
+        ext_mac=[]
         for x in net_name:
-            ip = os.popen("/sbin/ifconfig -a %s|grep -i 'inet '"%x).read()
-            ip = re.search(r'(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})',ip)
-            if ip: 
-                net_ip.append(ip.group())
-            else:
-                net_ip.append("")
-            mac = os.popen("/sbin/ifconfig -a %s|egrep  'HWaddr|ether'"%x).read()[:-1]
-            mac = re.search(r'(\w{1,2})\:(\w{1,2})\:(\w{1,2})\:(\w{1,2})\:(\w{1,2})\:(\w{1,2})',mac)
+            # ip =[y[:-1] for y in  os.popen("/sbin/ip address show %s| awk '/inet /{sub(\"/.*\",\"\",$2); print $2}'|sed 's/ /,/g' "%x).readlines() ]
+            ip =[k[:-1] for k in os.popen("/sbin/ip address show %s| awk '/inet /{sub(\"/.*\",\"\",$2); print $2}'|sed 's/ /,/g' "%x).readlines()]
+            mac = os.popen("/sbin/ip address show %s|awk '/link\/ether /{print $2}'"%x).read()[:-1]
             if mac:
-                net_mac.append(mac.group())
+                net_mac.append(mac)
             else:
                 net_mac.append("")
+            if len(ip):
+                net_ip.append(ip[0])
+            else:
+                net_ip.append('')
+            if len(ip) > 1:
+                for y in range(1,len(ip)):
+                    ext_name.append(x+'.'+str(y))
+                    ext_ip.append(ip[y])
+                    ext_mac.append(mac)
+        if ext_name:
+            for x in range(len(ext_name)):
+                net_name.append(ext_name[x])
+                net_ip.append(ext_ip[x])
+                net_mac.append(ext_mac[x])
+
         self.Network['Network_Name'],self.Network['Network_Ip'],self.Network['Network_Mac'] = net_name,net_ip,net_mac
         return self.Network
+    # def network(self):
+    #     net_name=[x[:-1] for x in os.popen("/sbin/ifconfig -a|sed -n '/Link encap/p'|awk '{print $1}'|grep -v lo|grep -v 'docker'").readlines()]
+    #     if not net_name:
+    #         net_name=[x[:-1] for x in os.popen("/sbin/ifconfig -a|sed -n '/flags=/p'|awk -F: '{print $1}'|grep -v lo").readlines()]
+    #     net_ip=[]
+    #     net_mac=[]
+    #     for x in net_name:
+    #         ip = os.popen("/sbin/ifconfig -a %s|grep -i 'inet '"%x).read()
+    #         ip = re.search(r'(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})',ip)
+    #         if ip: 
+    #             net_ip.append(ip.group())
+    #         else:
+    #             net_ip.append("")
+    #         mac = os.popen("/sbin/ifconfig -a %s|egrep  'HWaddr|ether'"%x).read()[:-1]
+    #         mac = re.search(r'(\w{1,2})\:(\w{1,2})\:(\w{1,2})\:(\w{1,2})\:(\w{1,2})\:(\w{1,2})',mac)
+    #         if mac:
+    #             net_mac.append(mac.group())
+    #         else:
+    #             net_mac.append("")
+    #     self.Network['Network_Name'],self.Network['Network_Ip'],self.Network['Network_Mac'] = net_name,net_ip,net_mac
+    #     return self.Network
 
     def network_name(self):
         return self.network()['Network_Name']
@@ -165,13 +200,19 @@ class SERVER():             ##服务器信息采集，包括服务器的SN号，
             server_message['Server_Sn'] = os.popen("/usr/sbin/dmidecode|grep -A0 'Serial Number'|head -1|awk -F: '{print $2}'|sed 's/^ //'|grep -v '^#' 2>/dev/null | sed 's/ *$//g'").read()[:-1]
         #服务器统一命名
         if server_message['Server_Type'] == "Huawei Technologies Co., Ltd.":
-            server_message['Server_Type'] = "Huwei Inc."
+            server_message['Server_Type'] = "Huawei Inc."
         elif server_message['Server_Type'] == "Dell" or server_message['Server_Type'] == "Dell Computer Corporation":
             server_message['Server_Type'] = "Dell Inc."
         elif server_message['Server_Type'] == "Lenovo":
             server_message['Server_Type'] = "Lenovo Inc."
         elif server_message['Server_Type'] == "IBM":
             server_message['Server_Type'] = "IBM Inc."
+            if 'system' in server_message['Server_Product']:
+                m = server_message['Server_Product'].split(':')[0].split(' ')
+                server_message['Server_Product'] = m[1]+m[2]
+            elif 'xSeries' in server_message['Server_Product']:
+                m = server_message['Server_Product'].split(':')[0].split(' ')
+                server_message['Server_Product'] = m[1]+m[5]+m[6]
         #虚拟机统一命名
         if re.search(r'VMware',server_message['Server_Product'],re.IGNORECASE): 
             server_message['Server_Product'] = 'VMware'
@@ -180,6 +221,14 @@ class SERVER():             ##服务器信息采集，包括服务器的SN号，
         #机身码统一名称
         if re.search(r'VMware',server_message['Server_Sn'],re.IGNORECASE):
             server_message['Server_Sn']=server_message['Server_Sn'].replace(" ","")
+        elif server_message['Server_Sn'] =='Not Specified' or server_message['Server_Sn'] =='empty'\
+            or server_message['Server_Sn'] =='N/A' or server_message['Server_Sn'] =='System Serial Number'\
+            or server_message['Server_Sn'] =='............' or server_message['Server_Sn'] == '0123456789'\
+            or server_message['Server_Sn'] =='To Be Filled By O.E.M.' or  not server_message['Server_Sn']:
+            # server_message['Server_Sn'] = os.popen("echo %s|sha1sum|cut -c1-20"%NETWORK().network_mac()[0]).read()[:-1]
+            pass
+        elif server_message['Server_Product'] =='C6100':
+            pass
         self.Server = server_message
         return self.Server
 
@@ -193,19 +242,19 @@ class SERVER():             ##服务器信息采集，包括服务器的SN号，
 
 class IP():             ##IP信息采集，包括内网IP，外网IP，管理卡IP
 
-    Ip = {'Outer_Ip':[],'Intranet_Ip':[],'Management_Ip':[]}
+    Ip = {'Outer_Ip':'','Intranet_Ip':'','Management_Ip':''}
 
     def ip(self):
-        ip_message = {'Outer_Ip':[],'Intranet_Ip':[],'Management_Ip':''}
+        ip_message = {'Outer_Ip':'','Intranet_Ip':'','Management_Ip':''}
         iptools = NETWORK().network_ip()
         if check_virutal():
             management_IP= os.popen("timeout 5 ipmitool lan print|grep -i 'IP Address'|grep -v 'Source'|awk -F ':' '{print $2}' ").read().strip()
             ip_message['Management_Ip']=management_IP if management_IP  else "no connect ipmitool"
         for i in iptools:
-            if re.match(r'^10.',i) or re.match(r'^192.',i) or re.match(r'^172.',i):
-                ip_message['Intranet_Ip'].append(i)
+            if re.match(r'^10\.',i) or re.match(r'^192.',i) or re.match(r'^172.',i):
+                ip_message['Intranet_Ip']=i
             elif i:
-                ip_message['Outer_Ip'].append(i)
+                ip_message['Outer_Ip']=i
         self.Ip = ip_message
         return self.Ip
 
@@ -215,3 +264,24 @@ class IP():             ##IP信息采集，包括内网IP，外网IP，管理卡
         return self.ip()['Intranet_Ip']
     def management_ip(self):
         return self.ip()['Management_Ip']
+
+
+class FILESYSTEM():
+    Filesystem = {'Name':[],'Type':[]}
+
+    def filesystem(self):
+        File_system = {'Name':[],'Type':[]}
+        if not os.path.exists('/bin/lsblk'):
+            os.system('yum install -y  util-linux')
+        file =[re.sub(r"\s{2,}", " ", x[:-1]) for x in os.popen("lsblk -lf|awk '{print $1\" \"$2}'").readlines()]
+        for x in file:
+            if re.search(r'ext',x,re.IGNORECASE) or re.search(r'xfs',x,re.IGNORECASE):
+                File_system['Name'].append(x.split(' ')[0])
+                File_system['Type'].append(x.split(' ')[1])
+        self.Filesystem = File_system
+        return self.Filesystem
+
+    def filesystem_name(self):
+        return self.filesystem()['Name']
+    def filesystem_type(self):
+        return self.filesystem()['Type']

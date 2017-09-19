@@ -53,7 +53,10 @@ def getnetwork():
     print '网卡信息检测-start-'
     net_message = Hard_collect.NETWORK().network()
     for x in range(len(net_message['Network_Name'])):
-        print '网卡名:'+net_message['Network_Name'][x]+'   '+'网卡MAC地址:'+net_message['Network_Mac'][x]+'   '+'网卡ip:'+net_message['Network_Ip'][x]
+        print '网卡名:'+net_message['Network_Name'][x]+'   '+'网卡MAC地址:'+net_message['Network_Mac'][x],
+        for y in net_message['Network_Ip'][x]:
+            print '   '+'网卡ip:'+y,
+        print ''
     print '网卡信息检测-end-'
     print ''
 
