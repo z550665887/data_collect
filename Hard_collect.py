@@ -190,23 +190,23 @@ class SERVER():             ##服务器信息采集，包括服务器的SN号，
 
     def server(self):
         server_message = {'Server_Sn':'','Server_Type':'','Server_Product':''}
-        server_message['Server_Type'] = os.popen("/usr/sbin/dmidecode -s system-manufacturer 2>/dev/null|grep -v '^#' 2>/dev/null | sed 's/ *$//g'").read()[:-1]
+        server_message['Server_Type'] = os.popen("/usr/sbin/dmidecode -s system-manufacturer 2>/dev/null|grep -v '^#' 2>/dev/null | sed 's/ *$//g'").read()[:-1].replace("Inc.","").strip()
         if server_message['Server_Type']:
             server_message['Server_Product'] = os.popen("/usr/sbin/dmidecode -s system-product-name |grep -v '^#' 2>/dev/null | sed 's/ *$//g'").read()[:-1]
             server_message['Server_Sn'] = os.popen("/usr/sbin/dmidecode -s system-serial-number|grep -v '^#' 2>/dev/null | sed 's/ *$//g'").read()[:-1]
         else:
-            server_message['Server_Type'] = os.popen("/usr/sbin/dmidecode  | grep -A5 System\ Information | grep Manufacturer | awk -F: '{print $2}' | sed 's/^ //' | awk '{print $1}' 2>/dev/null | sed 's/ *$//g'").read()[:-1]
+            server_message['Server_Type'] = os.popen("/usr/sbin/dmidecode  | grep -A5 System\ Information | grep Manufacturer | awk -F: '{print $2}' | sed 's/^ //' | awk '{print $1}' 2>/dev/null | sed 's/ *$//g'").read()[:-1].replace("Inc.","").strip()
             server_message['Server_Product'] = os.popen("/usr/sbin/dmidecode | grep -A5 System\ Information | grep Product\ Name | awk -F: '{print $2}'| sed 's/^ //' 2>/dev/null | sed 's/ *$//g'").read()[:-1]
             server_message['Server_Sn'] = os.popen("/usr/sbin/dmidecode|grep -A0 'Serial Number'|head -1|awk -F: '{print $2}'|sed 's/^ //'|grep -v '^#' 2>/dev/null | sed 's/ *$//g'").read()[:-1]
         #服务器统一命名
         if server_message['Server_Type'] == "Huawei Technologies Co., Ltd.":
-            server_message['Server_Type'] = "Huawei Inc."
+            server_message['Server_Type'] = "Huawei"
         elif server_message['Server_Type'] == "Dell" or server_message['Server_Type'] == "Dell Computer Corporation":
-            server_message['Server_Type'] = "Dell Inc."
+            server_message['Server_Type'] = "Dell"
         elif server_message['Server_Type'] == "Lenovo":
-            server_message['Server_Type'] = "Lenovo Inc."
+            server_message['Server_Type'] = "Lenovo"
         elif server_message['Server_Type'] == "IBM":
-            server_message['Server_Type'] = "IBM Inc."
+            server_message['Server_Type'] = "IBM"
             if 'system' in server_message['Server_Product']:
                 m = server_message['Server_Product'].split(':')[0].split(' ')
                 server_message['Server_Product'] = m[1]+m[2]
@@ -229,14 +229,15 @@ class SERVER():             ##服务器信息采集，包括服务器的SN号，
             pass
         elif server_message['Server_Product'] =='C6100':
             pass
+
         self.Server = server_message
         return self.Server
 
     def server_sn(self):
         return self.server()['Server_Sn']
-    def server_type(self):
-        return self.server()['Server_Product']
     def server_product(self):
+        return self.server()['Server_Product']
+    def server_type(self):
         return self.server()['Server_Type']
 
 
@@ -251,7 +252,7 @@ class IP():             ##IP信息采集，包括内网IP，外网IP，管理卡
             management_IP= os.popen("timeout 5 ipmitool lan print|grep -i 'IP Address'|grep -v 'Source'|awk -F ':' '{print $2}' ").read().strip()
             ip_message['Management_Ip']=management_IP if management_IP  else "no connect ipmitool"
         for i in iptools:
-            if re.match(r'^10\.',i) or re.match(r'^192.',i) or re.match(r'^172.',i):
+            if re.match(r'^10.',i) or re.match(r'^192.',i) or re.match(r'^172.',i):
                 ip_message['Intranet_Ip']=i
             elif i:
                 ip_message['Outer_Ip']=i

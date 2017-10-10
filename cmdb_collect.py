@@ -9,6 +9,8 @@ import Hard_collect
 import urllib
 import urllib2
 import json
+import threading
+import traceback
 
 Text = {}
 Text2 = {"information":{}}
@@ -30,8 +32,9 @@ def getmemory():
 
 def getserver():
     Text['sn']=Hard_collect.SERVER().server_sn()
-    Text['model']=Hard_collect.SERVER().server_type()
-    Text['brand']=Hard_collect.SERVER().server_product()
+    Text['model_info']={'brand':Hard_collect.SERVER().server_type(),'model':Hard_collect.SERVER().server_product()}
+    # Text['model']=Hard_collect.SERVER().server_product()
+    # Text['brand']=Hard_collect.SERVER().server_type()
 
 
 def getnetwork():
@@ -55,36 +58,6 @@ def getcontrolIP():
 def check_virutal():
     return 0 if 'Virtual' in os.popen('dmidecode -s system-product-name').readline() else 1
 
-
-
-def url_request(date):     ####通过POST方法发送date到指定端口
-    # mainurl="http://{0}:{1}/{2}".format("172.30.50.159","8000","test/api")
-    # http://10.21.8.30:8090/api/Auto_Data/postPhysicalServerInfo
-    mainurl="http://10.21.8.30:8090/api/Auto_Data/postPhysicalServerInfo"
-    try:
-        # print date
-        data_encode = urllib.urlencode(date)
-        # print data_encode
-        
-        req = urllib2.Request(url=mainurl,data=data_encode)
-        res_data = urllib2.urlopen(req)
-        res = res_data.read()
-
-    except:
-        pass
-
-def url_request2(date):     ####通过POST方法发送date到指定端口
-    mainurl="http://{0}:{1}/{2}".format("172.30.50.159","8000","test/api")
-    try:
-        # print date
-        data_encode = urllib.urlencode(date)
-        # print data_encode
-        req = urllib2.Request(url=mainurl,data=data_encode,timeout = 10)
-        res_data = urllib2.urlopen(req)
-        res = res_data.read()
-
-    except:
-        pass
 
 def getdisk():
     if check_virutal():
@@ -114,6 +87,36 @@ def getfilesystem():
     for x in range(len(filesystem['Name'])):
         Text['file_info'].append({'name':filesystem['Name'][x],'type':filesystem['Type'][x]})
 
+def url_request(date):     ####通过POST方法发送date到指定端口
+    # mainurl="http://{0}:{1}/{2}".format("172.30.50.159","8000","test/api")
+    # http://10.21.8.30:8090/api/Auto_Data/postPhysicalServerInfo
+    mainurl="http://10.21.8.30:8090/api/Auto_Data/postPhysicalServerInfo"
+    try:
+        # print date
+        data_encode = urllib.urlencode(date)
+        # print data_encode
+        
+        req = urllib2.Request(url=mainurl,data=data_encode)
+        res_data = urllib2.urlopen(req,timeout = 10)
+        res = res_data.read()
+
+    except:
+        pass
+
+def url_request2(date):     ####通过POST方法发送date到指定端口
+    mainurl="http://{0}:{1}/{2}".format("172.30.50.159","8000","test/api")
+    try:
+        # print date
+        data_encode = urllib.urlencode(date)
+        # print data_encode
+        req = urllib2.Request(url=mainurl,data=data_encode)
+        res_data = urllib2.urlopen(req,timeout = 10)
+        res = res_data.read()
+
+    except:
+        traceback.print_exc()
+        pass
+
 def main():
 
     getmemory()
@@ -124,11 +127,14 @@ def main():
     getcontrolIP()
     getdisk()
     getfilesystem()
-    print Text
-    # Text2['information'] = Text
+    #print Text
+    Text2['information'] = Text
     # print Text2
-    url_request(Text)
-    # url_request2(Text2)
+    # 
+    t1 = threading.Thread(target = url_request,args =[Text])
+    # t2 = threading.Thread(target = url_request2,args =[Text2])
+    t1.start()
+    # t2.start()
 
 if __name__ == '__main__':    
     main()

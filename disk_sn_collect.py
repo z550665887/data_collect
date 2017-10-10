@@ -220,29 +220,6 @@ def getlogic_capacity():
                 data = data + int(y[:-1].strip())
         return str(data)+"GB"
 
-def printall():
-    time_start=time.time()
-    if check_virutal():
-        if os.path.exists("/opt/compaq/hpacucli/bld/hpacucli"):
-            gethuipu_data()
-            Logic_capacity = getlogic_capacity()
-            print NAME,SN,Type,PDtype,Size,MediaType,Life,Raid_Name,Raid_Size,Raid_Level,Logic_capacity
-        else:
-            if not os.path.exists("/opt/MegaRAID/MegaCli/"):
-                os.system("yum install -y MegaCli")
-            if os.path.exists("/opt/MegaRAID/MegaCli/MegaCli64"):
-                os.system("cp -rf /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli")
-                os.system("mv /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli64.bak")
-            getMediaType()
-            getSN()
-            getPDtype()
-            getSize()
-            getRaid()
-            Logic_capacity = getlogic_capacity()
-
-            print NAME,SN,Type,PDtype,Size,MediaType,Life,Raid_Name,Raid_Size,Raid_Level,Logic_capacity
-    else:
-        print "虚拟机硬盘大小:" + getvirutaldate()
 
 def returnall():
     time_start=time.time()
@@ -264,3 +241,26 @@ def returnall():
             return {'NAME':NAME,'SN':SN,'Type':Type,'PDtype':PDtype,'Size':Size,'MediaType':MediaType,'Life':Life,'Raid_Name':Raid_Name,'Raid_Size':Raid_Size,'Raid_Level':Raid_Level,'Logic_capacity':Logic_capacity}
     else:
         return getvirutaldate()
+# def printall():
+#     time_start=time.time()
+#     if check_virutal():
+#         if os.path.exists("/opt/compaq/hpacucli/bld/hpacucli"):
+#             gethuipu_data()
+#             Logic_capacity = getlogic_capacity()
+#             print NAME,SN,Type,PDtype,Size,MediaType,Life,Raid_Name,Raid_Size,Raid_Level,Logic_capacity
+#         else:
+#             if not os.path.exists("/opt/MegaRAID/MegaCli/"):
+#                 os.system("yum install -y MegaCli")
+#             if os.path.exists("/opt/MegaRAID/MegaCli/MegaCli64"):
+#                 os.system("cp -rf /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli")
+#                 os.system("mv /opt/MegaRAID/MegaCli/MegaCli64 /opt/MegaRAID/MegaCli/MegaCli64.bak")
+#             getMediaType()
+#             getSN()
+#             getPDtype()
+#             getSize()
+#             getRaid()
+#             Logic_capacity = getlogic_capacity()
+
+#             print NAME,SN,Type,PDtype,Size,MediaType,Life,Raid_Name,Raid_Size,Raid_Level,Logic_capacity
+#     else:
+#         print "虚拟机硬盘大小:" + getvirutaldate()
