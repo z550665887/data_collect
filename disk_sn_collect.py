@@ -149,8 +149,8 @@ def ReSn(data):
             Type.append("STEC")
         else:
             NAME.append(i[:-1])
-            SN.append('nosn')
-            Type.append('notype')
+            SN.append('UNKNOWN')
+            Type.append('UNKNOWN')
 
 def getPDtype():
     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli -pdlist -aall|grep -i 'pd type'|awk -F':' '{print $2}'").readlines()
@@ -170,16 +170,19 @@ def getLife():
         life = os.popen("smartctl -a -d megaraid,%s -i /dev/sda|egrep -i 'number of hours powered up|Power_On_Hours'"%i).read()[-9:-1].strip()
         Life.append(life) if life else Life.append('no data')
 
-def check_virutal():
-    return 0 if 'Virtual' in os.popen('dmidecode -s system-product-name').readline() else 1
+def check_virutal():    ##  python版本过低不支持三目运算符 return 0  if 'Virtual' in os.popen('dmidecode -s system-product-name').readline() else 1
+    if 'Virtual' in os.popen('dmidecode -s system-product-name').readline():
+        return 0  
+    else:
+        return 1
 
 def getvirutaldate():
-    data = os.popen("/sbin/fdisk -l |grep -i 'Disk /dev/sd'|awk -F ':' '{print $2}'|awk -F ',' '{print $1}'").readlines()
+    data = os.popen("/sbin/fdisk -l |grep -i 'Disk /dev/sd'|awk -F ':' '{print $2}'|awk  '{print $3}'").readlines()
     datas = 0
     for x in data:
-        datas= float(x[:-1].strip().split(" ")[0]) + datas
-    VM_Size = datas
-    return str(VM_Size)+data[0].strip().split(" ")[1]
+        datas=  datas+int(x)
+    VM_Size = datas/1024/1024/1024
+    return str(VM_Size)+'GB'
 
 def gethuipu_data():
     num=os.popen('hpacucli ctrl all show status|grep -i "Smart Array"|cut -d" "  -f6').read()[:-1]
@@ -194,8 +197,8 @@ def gethuipu_data():
         else:
             MediaType=(["HP" for y in range(len(Size))])
         raid_name = os.popen("hpacucli ctrl all show |awk -F 'in Slot' '{print $1}'").read().replace('\n','')
-        re_size = os.popen("hpacucli ctrl slot=%s ld all show |grep -oe '(.*)'|sed 's/[()]//g'|awk -F',' '{print $2}'"%x).readlines()
-        re_level = os.popen("hpacucli ctrl slot=%s ld all show |grep -oe '(.*)'|sed 's/[()]//g'|awk -F',' '{print $1}'"%x).readlines()
+        re_level = os.popen("hpacucli ctrl slot=%s ld all show |grep -oe '(.*)'|grep -i 'Raid'|sed 's/[()]//g'|awk -F',' '{print $2}'"%x).readlines()
+        re_size = os.popen("hpacucli ctrl slot=%s ld all show |grep -oe '(.*)'|egrep -i 'GB|TB'|sed 's/[()]//g'|awk -F',' '{print $1}'"%x).readlines()
         for i in re_size:
             Raid_Name.append(raid_name.strip())
             Raid_Size.append(i[:-1].strip())
@@ -218,6 +221,7 @@ def getlogic_capacity():
                 data = data + float(y[:-1].strip())*1024
             else:
                 data = data + int(y[:-1].strip())
+        #print data
         return str(data)+"GB"
 
 

@@ -29,8 +29,14 @@ def printzpc():
               ICAgLwogIC8gICAgICB8LS0tLS0tICAgIFwKIC8gICAgICAgfCAgICAgICAgICAgXAotLS0tLS0gICB8ICAgICAgICAgICAgLS0tLS0tCg=='
     return base64.b64decode(banner)
 
-def check_virutal():            ##判断虚拟机
-    return 0 if 'Virtual' in os.popen('dmidecode -s system-product-name').readline() else 1
+# def check_virutal():            ##判断虚拟机
+#     return 0 if 'Virtual' in os.popen('dmidecode -s system-product-name').readline() else 1
+
+def check_virutal():    ##  python版本过低不支持三目运算符 if 'Virtual' in os.popen('dmidecode -s system-product-name').readline()
+    if 'Virtual' in os.popen('dmidecode -s system-product-name').readline():
+        return 0  
+    else:
+        return 1
 
 class MEMORY():                 ##内存相关信息，包括SN,型号，大小
     Memory = {'Memory_Sn':[],'Memory_Size':[],'Memory_Type':[]}
@@ -63,7 +69,7 @@ class SYSTEM():             ##系统相关信息 包括主机名，系统名，�
 
     def system(self):
         self.System['Node'] = platform.uname()[1]
-        self.System['Sys_Name'] = platform.linux_distribution()[0]
+        self.System['Sys_Name'] = platform.linux_distribution()[0].replace("#","")  ###某些系统的名字前面有#
         self.System['Sys_verson'] = platform.linux_distribution()[1]
         self.System['Sys_code'] = platform.linux_distribution()[2]
         self.System['release'] = platform.release()
@@ -88,7 +94,7 @@ class NETWORK():            ##网卡信息采集，包括网卡名称，IP和网
     Network = {'Network_Name':[],'Network_Ip':[],'Network_Mac':[]}
     
     def network(self):
-        net_name=[x[:-1] for x in os.popen("/sbin/ip address |awk '/^[0-9]+: (eth|em|bond|ens)/{sub(\":\",\"\",$2);print $2;}'").readlines()]
+        net_name=[x[:-1] for x in os.popen("/sbin/ip address |awk '/^[0-9]+: (eth|em|bond|ens|eno)/{sub(\":\",\"\",$2);print $2;}'").readlines()]
         net_ip=[]
         net_mac=[]
         ext_name=[]
@@ -108,7 +114,7 @@ class NETWORK():            ##网卡信息采集，包括网卡名称，IP和网
                 net_ip.append('')
             if len(ip) > 1:
                 for y in range(1,len(ip)):
-                    ext_name.append(x+'.'+str(y))
+                    ext_name.append(x+'-'+str(y))
                     ext_ip.append(ip[y])
                     ext_mac.append(mac)
         if ext_name:
@@ -190,15 +196,17 @@ class SERVER():             ##服务器信息采集，包括服务器的SN号，
 
     def server(self):
         server_message = {'Server_Sn':'','Server_Type':'','Server_Product':''}
-        server_message['Server_Type'] = os.popen("/usr/sbin/dmidecode -s system-manufacturer 2>/dev/null|grep -v '^#' 2>/dev/null | sed 's/ *$//g'").read()[:-1].replace("Inc.","").strip()
+        server_message['Server_Type'] = os.popen("/usr/sbin/dmidecode -s system-manufacturer 2>/dev/null|grep -v '^#' 2>/dev/null | sed 's/ *$//g'").readlines()[0][:-1].replace("Inc.","").strip()
         if server_message['Server_Type']:
-            server_message['Server_Product'] = os.popen("/usr/sbin/dmidecode -s system-product-name |grep -v '^#' 2>/dev/null | sed 's/ *$//g'").read()[:-1]
-            server_message['Server_Sn'] = os.popen("/usr/sbin/dmidecode -s system-serial-number|grep -v '^#' 2>/dev/null | sed 's/ *$//g'").read()[:-1]
+            server_message['Server_Product'] = os.popen("/usr/sbin/dmidecode -s system-product-name |grep -v '^#' 2>/dev/null | sed 's/ *$//g'").readlines()[0][:-1]
+            server_message['Server_Sn'] = os.popen("/usr/sbin/dmidecode -s system-serial-number|grep -v '^#' 2>/dev/null | sed 's/ *$//g'").readlines()[0][:-1]
         else:
-            server_message['Server_Type'] = os.popen("/usr/sbin/dmidecode  | grep -A5 System\ Information | grep Manufacturer | awk -F: '{print $2}' | sed 's/^ //' | awk '{print $1}' 2>/dev/null | sed 's/ *$//g'").read()[:-1].replace("Inc.","").strip()
-            server_message['Server_Product'] = os.popen("/usr/sbin/dmidecode | grep -A5 System\ Information | grep Product\ Name | awk -F: '{print $2}'| sed 's/^ //' 2>/dev/null | sed 's/ *$//g'").read()[:-1]
-            server_message['Server_Sn'] = os.popen("/usr/sbin/dmidecode|grep -A0 'Serial Number'|head -1|awk -F: '{print $2}'|sed 's/^ //'|grep -v '^#' 2>/dev/null | sed 's/ *$//g'").read()[:-1]
+            server_message['Server_Type'] = os.popen("/usr/sbin/dmidecode  | grep -A5 System\ Information | grep Manufacturer | awk -F: '{print $2}' | sed 's/^ //' | awk '{print $1}' 2>/dev/null | sed 's/ *$//g'").readlines()[0][:-1].replace("Inc.","").strip()
+            server_message['Server_Product'] = os.popen("/usr/sbin/dmidecode | grep -A5 System\ Information | grep Product\ Name | awk -F: '{print $2}'| sed 's/^ //' 2>/dev/null | sed 's/ *$//g'").readlines()[0][:-1]
+            server_message['Server_Sn'] = os.popen("/usr/sbin/dmidecode|grep -A0 'Serial Number'|head -1|awk -F: '{print $2}'|sed 's/^ //'|grep -v '^#' 2>/dev/null | sed 's/ *$//g'").readlines()[0][:-1]
         #服务器统一命名
+        if server_message['Server_Sn'] =="(none)" and IP().intranet_ip() == "10.90.1.34":      ###10.90.1.34的sn号无法获取为(none) 写死。
+            server_message['Server_Sn'] = "06FDLRB" 
         if server_message['Server_Type'] == "Huawei Technologies Co., Ltd.":
             server_message['Server_Type'] = "Huawei"
         elif server_message['Server_Type'] == "Dell" or server_message['Server_Type'] == "Dell Computer Corporation":
@@ -207,12 +215,14 @@ class SERVER():             ##服务器信息采集，包括服务器的SN号，
             server_message['Server_Type'] = "Lenovo"
         elif server_message['Server_Type'] == "IBM":
             server_message['Server_Type'] = "IBM"
-            if 'system' in server_message['Server_Product']:
+            if 'system' in server_message['Server_Product'] or 'System' in server_message['Server_Product']:    ###别问我为什么
                 m = server_message['Server_Product'].split(':')[0].split(' ')
-                server_message['Server_Product'] = m[1]+m[2]
+                server_message['Server_Product'] = m[0]+' '+m[1]+' '+m[2]
             elif 'xSeries' in server_message['Server_Product']:
                 m = server_message['Server_Product'].split(':')[0].split(' ')
-                server_message['Server_Product'] = m[1]+m[5]+m[6]
+                server_message['Server_Product'] = m[1]+' '+m[5]+' '+m[6]
+        if server_message['Server_Product'] == "DSS1500":   ###为了统一DSS1500 和DSS 1500
+            server_message['Server_Product'] = "DSS 1500"
         #虚拟机统一命名
         if re.search(r'VMware',server_message['Server_Product'],re.IGNORECASE): 
             server_message['Server_Product'] = 'VMware'
@@ -250,10 +260,14 @@ class IP():             ##IP信息采集，包括内网IP，外网IP，管理卡
         iptools = NETWORK().network_ip()
         if check_virutal():
             management_IP= os.popen("timeout 5 ipmitool lan print|grep -i 'IP Address'|grep -v 'Source'|awk -F ':' '{print $2}' ").read().strip()
-            ip_message['Management_Ip']=management_IP if management_IP  else "no connect ipmitool"
+            ip_message['Management_Ip']=management_IP if management_IP and management_IP != "0.0.0.0" else ""
+
         for i in iptools:
             if re.match(r'^10.',i) or re.match(r'^192.',i) or re.match(r'^172.',i):
-                ip_message['Intranet_Ip']=i
+                if ip_message['Intranet_Ip'] == '':
+                    ip_message['Intranet_Ip'] = i
+                else:
+                    ip_message['Intranet_Ip']=ip_message['Intranet_Ip']+','+i
             elif i:
                 ip_message['Outer_Ip']=i
         self.Ip = ip_message
