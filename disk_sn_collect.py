@@ -161,17 +161,23 @@ def getSize():
     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli -pdlist -aall|grep -i 'Coerced Size:'|awk '{print $3$4}'").readlines()
     for i in data:
         if 'Size' not in i:
-            Size.append(i.replace('\n','').strip())
+            if  "0KB" in i:
+                Size.append("0")
+            else:
+                Size.append(i.replace('\n','').strip())
 
 def getLife():
     data = os.popen("/opt/MegaRAID/MegaCli/MegaCli -pdlist -aall|grep 'Device Id'|awk -F ':' '{print $2}'").readlines()
     device_Id = [x[:-1].strip() for x in data]
     for i in device_Id:
         life = os.popen("smartctl -a -d megaraid,%s -i /dev/sda|egrep -i 'number of hours powered up|Power_On_Hours'"%i).read()[-9:-1].strip()
-        Life.append(life) if life else Life.append('no data')
+        if life:
+            Life.append(life) 
+        else:
+            Life.append('no data')
 
 def check_virutal():    ##  python版本过低不支持三目运算符 return 0  if 'Virtual' in os.popen('dmidecode -s system-product-name').readline() else 1
-    if 'Virtual' in os.popen('dmidecode -s system-product-name').readline():
+    if 'Virtual' in os.popen('/usr/sbin/dmidecode -s system-product-name').readline():
         return 0  
     else:
         return 1
@@ -185,27 +191,33 @@ def getvirutaldate():
     return str(VM_Size)+'GB'
 
 def gethuipu_data():
-    num=os.popen('hpacucli ctrl all show status|grep -i "Smart Array"|cut -d" "  -f6').read()[:-1]
-    for x in num:
-        NAME=[y.replace('\n','').strip() for y in os.popen("hpacucli ctrl slot=%s pd all show detail|grep -E 'Serial Number'|awk -F: '{print $2}'"%x).readlines()]
-        Type=[y.replace('\n','').strip() for y in os.popen("hpacucli ctrl slot=%s pd all show detail|grep -E 'Model'|awk -F: '{print $2}'"%x).readlines()]
-        SN=[y.replace('\n','').strip() for y in os.popen("hpacucli ctrl slot=%s pd all show detail|grep -E 'Serial Number'|awk -F: '{print $2}'"%x).readlines()]
-        PDtype=[y.replace('\n','').strip() for y in os.popen("hpacucli ctrl slot=%s pd all show detail|grep -i 'Interface Type'|awk -F':' '{print $2}'"%x).readlines()]
-        Size=[y.replace('\n','').strip() for y in os.popen("hpacucli ctrl slot=%s pd all show detail|grep -i 'Size'|awk -F':' '{print $2}'"%x).readlines()]
-        if 'does not have any SSD physical' in os.popen("hpacucli ctrl slot=%s ssdpd all show detail"%x).read():
-            MediaType=(["Hard Disk Device" for y in range(len(Size))])
-        else:
-            MediaType=(["HP" for y in range(len(Size))])
-        raid_name = os.popen("hpacucli ctrl all show |awk -F 'in Slot' '{print $1}'").read().replace('\n','')
-        re_level = os.popen("hpacucli ctrl slot=%s ld all show |grep -oe '(.*)'|grep -i 'Raid'|sed 's/[()]//g'|awk -F',' '{print $2}'"%x).readlines()
-        re_size = os.popen("hpacucli ctrl slot=%s ld all show |grep -oe '(.*)'|egrep -i 'GB|TB'|sed 's/[()]//g'|awk -F',' '{print $1}'"%x).readlines()
-        for i in re_size:
-            Raid_Name.append(raid_name.strip())
-            Raid_Size.append(i[:-1].strip())
-        for i in re_level:
-            Raid_Level.append(i[:-1].strip())
+    try:
+        num=os.popen('hpssacli ctrl all show status|grep -i "Smart"|cut -d" "  -f6').read()[:-1]
+        for x in num:
+            NAME=[y.replace('\n','').strip() for y in os.popen("hpssacli ctrl slot=%s pd all show detail|grep -E 'Serial Number'|awk -F: '{print $2}'"%x).readlines()]
+            Type=[y.replace('\n','').strip() for y in os.popen("hpssacli ctrl slot=%s pd all show detail|grep -E 'Model'|awk -F: '{print $2}'"%x).readlines()]
+            SN=[y.replace('\n','').strip() for y in os.popen("hpssacli ctrl slot=%s pd all show detail|grep -E 'Serial Number'|awk -F: '{print $2}'"%x).readlines()]
+            PDtype=[y.replace('\n','').strip() for y in os.popen("hpssacli ctrl slot=%s pd all show detail|grep -i 'Interface Type'|awk -F':' '{print $2}'"%x).readlines()]
+            Size=[y.replace('\n','').strip() for y in os.popen("hpssacli ctrl slot=%s pd all show detail|grep -i 'Size'|grep -v 'Native Block Size'|awk -F':' '{print $2}'"%x).readlines()]
+            if 'does not have any SSD physical' in os.popen("hpssacli ctrl slot=%s ssdpd all show detail"%x).read():
+                MediaType=(["Hard Disk Device" for y in range(len(Size))])
+            else:
+                MediaType=(["Solid State Device" for y in range(len(Size))])
+            raid_name = os.popen("hpssacli ctrl all show |awk -F 'in Slot' '{print $1}'").read().replace('\n','')
+            re_level = os.popen("hpssacli ctrl slot=%s ld all show |grep -oe '(.*)'|grep -i 'Raid'|sed 's/[()]//g'|awk -F',' '{print $2}'"%x).readlines()
+            re_size = os.popen("hpssacli ctrl slot=%s ld all show |grep -oe '(.*)'|egrep -i 'GB|TB'|sed 's/[()]//g'|awk -F',' '{print $1}'"%x).readlines()
+            for i in re_size:
+                Raid_Name.append(raid_name.strip())
+                Raid_Size.append(i[:-1].strip())
+            for i in re_level:
+                Raid_Level.append(i[:-1].strip())
+    except:
+        pass
     Logic_capacity = getlogic_capacity()
-    return {'NAME':NAME,'SN':SN,'Type':Type,'PDtype':PDtype,'Size':Size,'MediaType':MediaType,'Life':Life,'Raid_Name':Raid_Name,'Raid_Size':Raid_Size,'Raid_Level':Raid_Level,'Logic_capacity':Logic_capacity}
+    try:
+        return {'NAME':NAME,'SN':SN,'Type':Type,'PDtype':PDtype,'Size':Size,'MediaType':MediaType,'Life':Life,'Raid_Name':Raid_Name,'Raid_Size':Raid_Size,'Raid_Level':Raid_Level,'Logic_capacity':Logic_capacity}
+    except:
+        return {'Logic_capacity':Logic_capacity}
 
 def getlogic_capacity():
     if os.path.exists('/sbin/fdisk'):
@@ -229,7 +241,12 @@ def returnall():
     time_start=time.time()
     if check_virutal():
         if os.path.exists("/opt/compaq/hpacucli/bld/hpacucli"):
-            return gethuipu_data()
+            try:
+                if not os.path.exists("/usr/sbin/hpssacli"):
+                    os.system("rpm -Uvh http://mirrors.ifengidc.com/centos/6.3/os/x86_64/RPMS/hpssacli-2.30-6.0.x86_64.rpm")
+                return gethuipu_data()
+            except:
+                pass
         else:
             if not os.path.exists("/opt/MegaRAID/MegaCli/"):
                 os.system("yum install -y MegaCli")

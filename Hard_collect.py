@@ -3,7 +3,7 @@ import os
 import platform
 import re
 import base64
-
+import sys
 #######################################################操作方法如下所示
 #>>> import Hard_collect
 #>>> print Hard_collect.MEMORY().memory()
@@ -33,12 +33,12 @@ def printzpc():
 #     return 0 if 'Virtual' in os.popen('dmidecode -s system-product-name').readline() else 1
 
 def check_virutal():    ##  python版本过低不支持三目运算符 if 'Virtual' in os.popen('dmidecode -s system-product-name').readline()
-    if 'Virtual' in os.popen('dmidecode -s system-product-name').readline():
+    if 'Virtual' in os.popen('/usr/sbin/dmidecode -s system-product-name').readline():
         return 0  
     else:
         return 1
 
-class MEMORY():                 ##内存相关信息，包括SN,型号，大小
+class MEMORY:                 ##内存相关信息，包括SN,型号，大小
     Memory = {'Memory_Sn':[],'Memory_Size':[],'Memory_Type':[]}
 
     def memory(self):
@@ -54,6 +54,10 @@ class MEMORY():                 ##内存相关信息，包括SN,型号，大小
                 Memory_mes['Memory_Sn'].append(Sn[x][:-1])
                 Memory_mes['Memory_Size'].append(Size[x][:-1])
                 Memory_mes['Memory_Type'].append(Type[x][:-1])
+            elif re.search(r'GB',Size[x],re.IGNORECASE):        ##针对内存为GB的时候
+                Memory_mes['Memory_Sn'].append(Sn[x][:-1])
+                Memory_mes['Memory_Size'].append(str(int(Size[x][:-1].replace('GB',''))*1024)+'MB')
+                Memory_mes['Memory_Type'].append(Type[x][:-1])
         self.Memory = Memory_mes
         return self.Memory
 
@@ -64,14 +68,19 @@ class MEMORY():                 ##内存相关信息，包括SN,型号，大小
     def memory_type(self):
         return self.memory()['Memory_Type']
 
-class SYSTEM():             ##系统相关信息 包括主机名，系统名，系统版本，系统别称，内核版本，操作系统位数
+class SYSTEM:             ##系统相关信息 包括主机名，系统名，系统版本，系统别称，内核版本，操作系统位数
     System = {'Node':'','Sys_Name':'','Sys_verson':'','Sys_code':'','release':'','machine':'',}
 
     def system(self):
         self.System['Node'] = platform.uname()[1]
-        self.System['Sys_Name'] = platform.linux_distribution()[0].replace("#","")  ###某些系统的名字前面有#
-        self.System['Sys_verson'] = platform.linux_distribution()[1]
-        self.System['Sys_code'] = platform.linux_distribution()[2]
+        if sys.version >= "2.5":
+            self.System['Sys_Name'] = platform.linux_distribution()[0].replace("#","")  ###某些系统的名字前面有#
+            self.System['Sys_verson'] = platform.linux_distribution()[1]
+            self.System['Sys_code'] = platform.linux_distribution()[2]
+        else:
+            self.System['Sys_Name'] = os.popen("lsb_release -a|grep 'Description'|awk '{print $2}'").read().strip().replace("#","")  ###某些系统的名字前面有#
+            self.System['Sys_verson'] = os.popen("lsb_release -a|grep 'Description'|awk '{print $4}'").read().strip()
+            self.System['Sys_code'] = os.popen("lsb_release -a|grep 'Description'|awk '{print $5}'").read().strip().replace("(","").replace(")","")
         self.System['release'] = platform.release()
         self.System['machine'] = platform.machine()
         return self.System
@@ -90,7 +99,7 @@ class SYSTEM():             ##系统相关信息 包括主机名，系统名，�
         return self.system()['machine']
 
 
-class NETWORK():            ##网卡信息采集，包括网卡名称，IP和网卡的mac地址
+class NETWORK:            ##网卡信息采集，包括网卡名称，IP和网卡的mac地址
     Network = {'Network_Name':[],'Network_Ip':[],'Network_Mac':[]}
     
     def network(self):
@@ -154,23 +163,25 @@ class NETWORK():            ##网卡信息采集，包括网卡名称，IP和网
     def network_mac(self):
         return self.network()['Network_Mac']
 
-class CPU():            ##CPU信息采集，包括CPU的名称，CPU的总核数，CPU的物理核数，CPU的位数，和CPU的频率
+class CPU:            ##CPU信息采集，包括CPU的名称，CPU的总核数，CPU的物理核数，CPU的位数，和CPU的频率
     Cpu = {'Cpu_Name':'','Cpu_Processor':'','Physical_Number':'','Cpu_Size':'','Cpu_Rart':''}
 
     def cpu(self):
         # cpu_message = {'id':0,'processor':0,'name':'','size':'',}
         cpu_message = {'Cpu_Name':'','Cpu_Processor':0,'Physical_Number':0,'Cpu_Size':'','Cpu_Rart':''}
-        with open('/proc/cpuinfo') as f:
-            for line in f:
-                if 'physical id' in line:
-                    cpu_message['Physical_Number'] = max(int(line.split(':')[1].strip())+1,cpu_message['Physical_Number'])
-                    line = line.split(':')[1].strip()
-                elif 'processor' in line:
-                    cpu_message['Cpu_Processor'] = max(int(line.split(':')[1].strip())+1,cpu_message['Cpu_Processor']) 
-                elif 'model name' in line:
-                    cpu_message['Cpu_Name'] = line.split(':')[1].strip()
-                elif 'clflush size' in line:
-                    cpu_message['Cpu_Size'] = line.split(':')[1].strip()
+        f = open('/proc/cpuinfo')
+        # with open('/proc/cpuinfo') as f:
+        for line in f:
+            if 'physical id' in line:
+                cpu_message['Physical_Number'] = max(int(line.split(':')[1].strip())+1,cpu_message['Physical_Number'])
+                line = line.split(':')[1].strip()
+            elif 'processor' in line:
+                cpu_message['Cpu_Processor'] = max(int(line.split(':')[1].strip())+1,cpu_message['Cpu_Processor']) 
+            elif 'model name' in line:
+                cpu_message['Cpu_Name'] = line.split(':')[1].strip()
+            elif 'clflush size' in line:
+                cpu_message['Cpu_Size'] = line.split(':')[1].strip()
+        f.close()
         cpu_message['Cpu_Name'] = str(cpu_message['Cpu_Processor'])+'*'+cpu_message['Cpu_Name']
         if os.popen('cat /proc/cpuinfo|grep -c "GHz" ').read():
             cpu_message['Cpu_Rart'] = str(cpu_message['Cpu_Processor'])+'*'+cpu_message['Cpu_Name'].split('@')[1].strip()
@@ -191,7 +202,7 @@ class CPU():            ##CPU信息采集，包括CPU的名称，CPU的总核数
     def cpu_rart(self):
         return self.cpu()['Cpu_Rart']
 
-class SERVER():             ##服务器信息采集，包括服务器的SN号，服务器的型号和服务器的生产商。
+class SERVER:             ##服务器信息采集，包括服务器的SN号，服务器的型号和服务器的生产商。     致敬杨老师
     Server = {'Server_Sn':'','Server_Type':'','Server_Product':''}
 
     def server(self):
@@ -211,18 +222,27 @@ class SERVER():             ##服务器信息采集，包括服务器的SN号，
             server_message['Server_Type'] = "Huawei"
         elif server_message['Server_Type'] == "Dell" or server_message['Server_Type'] == "Dell Computer Corporation":
             server_message['Server_Type'] = "Dell"
-        elif server_message['Server_Type'] == "Lenovo":
+        elif server_message['Server_Type'] == "Lenovo" or server_message['Server_Type'] == 'LENOVO':
+            if 'System x3550 M5' in server_message['Server_Product']:
+                m = server_message['Server_Product'].split(':')[0].split(' ')
+                server_message['Server_Product'] = m[1]+' '+m[2]
             server_message['Server_Type'] = "Lenovo"
         elif server_message['Server_Type'] == "IBM":
             server_message['Server_Type'] = "IBM"
             if 'system' in server_message['Server_Product'] or 'System' in server_message['Server_Product']:    ###别问我为什么
-                m = server_message['Server_Product'].split(':')[0].split(' ')
-                server_message['Server_Product'] = m[0]+' '+m[1]+' '+m[2]
+                m = server_message['Server_Product'].replace('IBM','').split(':')[0].strip().split(' ')       
+                if 'M4' in server_message['Server_Product']:            ###针对M4 和M5机型 统一命名
+                    server_message['Server_Product'] = m[1]+' '+m[2]
+                elif 'M5' in server_message['Server_Product']:
+                    server_message['Server_Type'] = 'LENOVO'            ###针对IBM M5机型，由于被联想收购 同意品牌联想
+                    server_message['Server_Product'] = m[1]+' '+m[2]
             elif 'xSeries' in server_message['Server_Product']:
                 m = server_message['Server_Product'].split(':')[0].split(' ')
-                server_message['Server_Product'] = m[1]+' '+m[5]+' '+m[6]
+                server_message['Server_Product'] = m[5]+' '+m[6]
         if server_message['Server_Product'] == "DSS1500":   ###为了统一DSS1500 和DSS 1500
             server_message['Server_Product'] = "DSS 1500"
+        if server_message['Server_Product'] == "ThinkServer ThinkServer RD550": ###为了去掉ThinkServer
+            server_message['Server_Product'] = "ThinkServer RD550"
         #虚拟机统一命名
         if re.search(r'VMware',server_message['Server_Product'],re.IGNORECASE): 
             server_message['Server_Product'] = 'VMware'
@@ -251,7 +271,7 @@ class SERVER():             ##服务器信息采集，包括服务器的SN号，
         return self.server()['Server_Type']
 
 
-class IP():             ##IP信息采集，包括内网IP，外网IP，管理卡IP
+class IP:             ##IP信息采集，包括内网IP，外网IP，管理卡IP
 
     Ip = {'Outer_Ip':'','Intranet_Ip':'','Management_Ip':''}
 
@@ -260,10 +280,13 @@ class IP():             ##IP信息采集，包括内网IP，外网IP，管理卡
         iptools = NETWORK().network_ip()
         if check_virutal():
             management_IP= os.popen("timeout 5 ipmitool lan print|grep -i 'IP Address'|grep -v 'Source'|awk -F ':' '{print $2}' ").read().strip()
-            ip_message['Management_Ip']=management_IP if management_IP and management_IP != "0.0.0.0" else ""
+            if management_IP and management_IP != "0.0.0.0":
+                ip_message['Management_Ip']=management_IP  
+            else:
+                ip_message['Management_Ip'] = ""
 
         for i in iptools:
-            if re.match(r'^10.',i) or re.match(r'^192.',i) or re.match(r'^172.',i):
+            if re.match(r'^10\.',i) or re.match(r'^192\.',i) or re.match(r'^172\.',i):
                 if ip_message['Intranet_Ip'] == '':
                     ip_message['Intranet_Ip'] = i
                 else:
@@ -281,7 +304,7 @@ class IP():             ##IP信息采集，包括内网IP，外网IP，管理卡
         return self.ip()['Management_Ip']
 
 
-class FILESYSTEM():
+class FILESYSTEM:
     Filesystem = {'Name':[],'Type':[]}
 
     def filesystem(self):

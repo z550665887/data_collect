@@ -14,7 +14,6 @@ else:
     import urllib
     import urllib2
 
-import json
 import threading
 import traceback
 
@@ -22,13 +21,21 @@ Text = {}
 Text2 = {"information":{}}
 
 def getverson():
+
     Text['os_info'] = {'kernel':Hard_collect.SYSTEM().system_release(),'name_id':Hard_collect.SYSTEM().system_sys_name()+' '+Hard_collect.SYSTEM().system_sys_verson()+' '+Hard_collect.SYSTEM().system_sys_code()}
     Text['hostname']=Hard_collect.SYSTEM().system_node()
-    Text['os_info']['bit'] = '64' if Hard_collect.SYSTEM().system_machine() == 'x86_64' else '32'
+    '''
+    低版本不支持三目运算符
+    Text['os_info']['bit'] = '64'  if Hard_collect.SYSTEM().system_machine() == 'x86_64' else '32'
+    '''
+    if Hard_collect.SYSTEM().system_machine() == 'x86_64':
+        Text['os_info']['bit'] = '64' 
+    else:
+        Text['os_info']['bit'] = '32'
 
 def getmemory():
-    Text['memory_info']=[]
     if check_virutal():
+        Text['memory_info']=[]
         Text['memory_num'] = len(Hard_collect.MEMORY().memory_size())
         sns = Hard_collect.MEMORY().memory_sn()
         types = Hard_collect.MEMORY().memory_type()
@@ -40,12 +47,14 @@ def getmemory():
                 types[x] = "UNKNOWN"
             Text['memory_info'].append({'sn':sns[x],'type':types[x].replace(" ",""),'size':sizes[x]})
     else:
-        Text['memory_info'].append({'sn':'','type':'','size':Hard_collect.MEMORY().memory_size()})
+        # Text['memory_info'].append({'sn':'','type':'','size':Hard_collect.MEMORY().memory_size()})
+        Text['memory_capacity'] = Hard_collect.MEMORY().memory_size()
 
 
 def getserver():
     Text['sn']=Hard_collect.SERVER().server_sn()
-    Text['model_info']={'brand':Hard_collect.SERVER().server_type().upper(),'model':Hard_collect.SERVER().server_product().upper()}
+    if check_virutal():
+        Text['model_info']={'brand':Hard_collect.SERVER().server_type().upper(),'model':Hard_collect.SERVER().server_product().upper()}
     # Text['model']=Hard_collect.SERVER().server_product()
     # Text['brand']=Hard_collect.SERVER().server_type()
 
@@ -58,18 +67,21 @@ def getnetwork():
 
 
 def getcpu():
-    Text['cpu_info'] = {'model':Hard_collect.CPU().cpu_name(),'kernel_num':Hard_collect.CPU().cpu_processor(),'num':Hard_collect.CPU().physical_number(),'bit':Hard_collect.CPU().cpu_size(),'rate':Hard_collect.CPU().cpu_rart()}
-
-
+    if check_virutal():
+        Text['cpu_info'] = {'model':Hard_collect.CPU().cpu_name(),'kernel_num':Hard_collect.CPU().cpu_processor(),'num':Hard_collect.CPU().physical_number(),'bit':Hard_collect.CPU().cpu_size(),'rate':Hard_collect.CPU().cpu_rart()}
+    else:
+        Text['cpu_info'] = {'model':Hard_collect.CPU().cpu_name(),'kernel_num':Hard_collect.CPU().cpu_processor(),'bit':Hard_collect.CPU().cpu_size(),'rate':Hard_collect.CPU().cpu_rart()}
 
 def getcontrolIP():
     Text['ext_ip']=Hard_collect.IP().outer_ip()
     Text['int_ip']=Hard_collect.IP().intranet_ip()
-    Text['oob_ip']=Hard_collect.IP().management_ip()
+    if check_virutal():
+        Text['oob_ip']=Hard_collect.IP().management_ip()
+
 
 
 def check_virutal():    ##  python版本过低不支持三目运算符 if 'Virtual' in os.popen('dmidecode -s system-product-name').readline()
-    if 'Virtual' in os.popen('dmidecode -s system-product-name').readline():
+    if 'Virtual' in os.popen('/usr/sbin/dmidecode -s system-product-name').readline():
         return 0  
     else:
         return 1
@@ -101,7 +113,8 @@ def getfilesystem():
     filesystem = Hard_collect.FILESYSTEM().filesystem()
     Text['file_info'] =[]
     for x in range(len(filesystem['Name'])):
-        Text['file_info'].append({'name':filesystem['Name'][x],'type':filesystem['Type'][x]})
+        if 'docker' not in filesystem['Name'][x] and 'loop' not in filesystem['Name'][x]:
+            Text['file_info'].append({'name':filesystem['Name'][x],'type':filesystem['Type'][x]})
 
 def url_request(date):     ####通过POST方法发送date到指定端口
     mainurl="http://10.21.8.30:8090/api/Auto_Data/postPhysicalServerInfo"
@@ -110,52 +123,60 @@ def url_request(date):     ####通过POST方法发送date到指定端口
         # print data_encode
         if sys.version > '3':
             data_encode = urllib.parse.urlencode(date).encode('utf-8')
-            res_data = urllib.request.urlopen(url=mainurl,data=data_encode,timeout = 10)
+            res_data = urllib.request.urlopen(url=mainurl,data=data_encode,timeout = 15)
         else:
             data_encode = urllib.urlencode(date)
             req = urllib2.Request(url=mainurl,data=data_encode)
-            res_data = urllib2.urlopen(req,timeout = 10)
+            res_data = urllib2.urlopen(req,timeout = 15)
         res = res_data.read()
     except:
         traceback.print_exc()
         pass
 
-def url_request2(date):     ####通过POST方法发送date到指定端口
-    mainurl="http://{0}:{1}/{2}".format("172.30.50.98","8000","test/api")
+def url_request2(date):     ####通过POST方法发送date到指定端口 
+    ###fucking version mainurl="http://{0}:{1}/{2}".format("172.30.50.98","8000","test/api")
+    mainurl="http://172.30.50.98:8000/test/api"
     try:
         #print (date)
         # print data_encode
         if sys.version > '3':
             data_encode = urllib.parse.urlencode(date).encode('utf-8')
-            res_data = urllib.request.urlopen(url=mainurl,data=data_encode,timeout = 10)
+            res_data = urllib.request.urlopen(url=mainurl,data=data_encode,timeout = 15)
         else:
             data_encode = urllib.urlencode(date)
             req = urllib2.Request(url=mainurl,data=data_encode)
-            res_data = urllib2.urlopen(req,timeout = 10)
+            res_data = urllib2.urlopen(req,timeout = 15)
         res = res_data.read()
     except:
         traceback.print_exc()
         pass
 
 def main():
-    if check_virutal():
-        getmemory()
-        getserver() 
-        getcpu()
-        getverson()
-        getnetwork()
-        getcontrolIP()
+    
+    getmemory()
+    getserver() 
+    getcpu()
+    getverson()
+    getnetwork()
+    getcontrolIP()
+    try:
         getdisk()
-        getfilesystem()
+    except:
+        traceback.print_exc()
+    getfilesystem()
+    if check_virutal():
+        Text['type'] = "physical"
+    else:
+        Text['type'] = "virtual"
+    Text2['information'] = Text
+    # print Text2
+    # 
+    t1 = threading.Thread(target = url_request,args =[Text])
+    t2 = threading.Thread(target = url_request2,args =[Text2])
 
-        Text2['information'] = Text
-        # print Text2
-        # 
-        t1 = threading.Thread(target = url_request,args =[Text])
-        t2 = threading.Thread(target = url_request2,args =[Text2])
-        t1.start()
-        # t1.join()
-        t2.start()
+    t1.start()
+    # t1.join()
+    t2.start()
 
 if __name__ == '__main__':    
     main()
