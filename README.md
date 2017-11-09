@@ -6,11 +6,11 @@
 
 ###############disk_sn_collect操作方法如下所示
 
->>> import disk_sn_collect
+#>>> import disk_sn_collect
 
->>> disk_sn_collect.returnall()     ###SN号是经过型号和Megacli匹配后的得到的可能值。。。匹配不到返回UNKNOWN
+#>>> disk_sn_collect.returnall()     ###SN号是经过型号和Megacli匹配后的得到的可能值。。。匹配不到返回UNKNOWN
 
-{'MediaType': ['Hard Disk Device', 'Hard Disk Device', 'Hard Disk Device', 'Hard Disk Device'], 'Raid_Size': [' 1.635 TB'], 'Type': ['SEAGATE', 'SEAGATE', 'SEAGATE', 'SEAGATE'], 'Life': [], 'Raid_Name': [' LSI MegaRAID ROMB'], 'NAME': [' SEAGATE ST600MM0006 xxxxxxxxxxxx', ' SEAGATE ST600MM0006 xxxxxxxxxxxx', ' SEAGATE ST600MM0006 xxxxxxxxxxxx', ' SEAGATE ST600MM0006 xxxxxxxxxxxx'], 'Logic_capacity': '1675G', 'Raid_Level': [' Primary-5, Secondary-0,  Qualifier-3'], 'SN': ['xxxxxxxx', 'xxxxxxxx', 'xxxxxxxx', 'xxxxxxxx'], 'PDtype': ['SAS', 'SAS', 'SAS', 'SAS'], 'Size': ['558.406GB', '558.406GB', '558.406GB', '558.406GB']}
+#{'MediaType': ['Hard Disk Device', 'Hard Disk Device', 'Hard Disk Device', 'Hard Disk Device'], 'Raid_Size': [' 1.635 TB'], 'Type': ['SEAGATE', 'SEAGATE', 'SEAGATE', 'SEAGATE'], 'Life': [], 'Raid_Name': [' LSI MegaRAID ROMB'], 'NAME': [' SEAGATE ST600MM0006 xxxxxxxxxxxx', ' SEAGATE ST600MM0006 xxxxxxxxxxxx', ' SEAGATE ST600MM0006 xxxxxxxxxxxx', ' SEAGATE ST600MM0006 xxxxxxxxxxxx'], 'Logic_capacity': '1675G', 'Raid_Level': [' Primary-5, Secondary-0,  Qualifier-3'], 'SN': ['xxxxxxxx', 'xxxxxxxx', 'xxxxxxxx', 'xxxxxxxx'], 'PDtype': ['SAS', 'SAS', 'SAS', 'SAS'], 'Size': ['558.406GB', '558.406GB', '558.406GB', '558.406GB']}
 
 ###############Hard_collect操作方法如下所示
 
